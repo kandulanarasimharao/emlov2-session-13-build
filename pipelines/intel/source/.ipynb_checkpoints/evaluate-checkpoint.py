@@ -256,8 +256,8 @@ def eval_model(trainer, model, datamodule):
     with out_path.open("w") as f:
         f.write(json.dumps(report_dict))
 
-dvc_repo_url = os.environ.get("DVC_REPO_URL")
-dvc_branch = os.environ.get("DVC_BRANCH")
+dvc_repo_url = "codecommit::ap-south-1://sagemaker-intel-classification"
+dvc_branch = "pipeline-processed-dataset"
 
 def clone_dvc_git_repo():
     print(f":: Configure git to pull authenticated from CodeCommit")

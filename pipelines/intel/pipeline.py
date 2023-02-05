@@ -325,12 +325,6 @@ def get_pipeline(
         outputs=[
             ProcessingOutput(output_name="evaluation", source="/opt/ml/processing/evaluation"),
         ],
-        environment={
-            "DVC_REPO_URL": dvc_repo_url,
-            "DVC_BRANCH": dvc_branch,
-            "GIT_USER": "Kandula Narasimharao",
-            "GIT_EMAIL": "kandulanarasimharao@gmail.com"
-        }
     )
     
     evaluation_report = PropertyFile(
