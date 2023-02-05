@@ -36,8 +36,164 @@ from torchmetrics.functional import accuracy
 from pytorch_lightning import loggers as pl_loggers
 from datetime import datetime
 
-from train import LitResnet
-from train import IntelImgClfDataModule
+from pytorch_lightning.callbacks import TQDMProgressBar
+
+from torchmetrics import Accuracy
+accuracy1 = Accuracy(task="multiclass", num_classes=6)
+
+
+def get_training_env():
+    sm_training_env = os.environ.get("SM_TRAINING_ENV")
+    sm_training_env = json.loads(sm_training_env)
+
+    return sm_training_env
+
+
+class LitResnet(pl.LightningModule):
+    def __init__(self, num_classes=10, lr=0.05):
+        super().__init__()
+
+        self.save_hyperparameters()
+        self.model = timm.create_model(
+            "resnet18", pretrained=True, num_classes=num_classes
+        )
+
+    def forward(self, x):
+        out = self.model(x)
+        return F.log_softmax(out, dim=1)
+
+    def evaluate(self, batch, stage=None):
+        x, y = batch
+        logits = self(x)
+        loss = F.nll_loss(logits, y)
+        preds = torch.argmax(logits, dim=1)
+        acc = accuracy1(preds, y)
+
+        if stage:
+            self.log(f"{stage}/loss", loss, prog_bar=True)
+            self.log(f"{stage}/acc", acc, prog_bar=True)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = F.nll_loss(logits, y)
+        preds = torch.argmax(logits, dim=1)
+        acc = accuracy1(preds, y)
+
+        self.log(f"train/loss", loss, prog_bar=True)
+        self.log(f"train/acc", acc, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        self.evaluate(batch, "val")
+
+    def test_step(self, batch, batch_idx):
+        self.evaluate(batch, "test")
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.SGD(
+            self.parameters(),
+            lr=self.hparams.lr,
+            momentum=0.9,
+            weight_decay=5e-4,
+        )
+        return {"optimizer": optimizer}
+
+
+class IntelImgClfDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        data_dir: str = "data/",
+        batch_size: int = 256,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+    ):
+        super().__init__()
+
+        # this line allows to access init params with 'self.hparams' attribute
+        # also ensures init params will be stored in ckpt
+        self.save_hyperparameters(logger=False)
+
+        self.data_dir = Path(data_dir)
+
+        # data transformations
+        self.transforms = T.Compose(
+            [
+                T.ToTensor(),
+                T.Resize((224, 224)),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
+
+        self.data_train: Optional[Dataset] = None
+        self.data_test: Optional[Dataset] = None
+
+    @property
+    def num_classes(self):
+        return len(self.data_train.classes)
+
+    @property
+    def classes(self):
+        return self.data_train.classes
+
+    def prepare_data(self):
+        """Download data if needed.
+        Do not use it to assign state (self.x = y).
+        """
+        pass
+
+    def setup(self, stage: Optional[str] = None):
+        """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
+        This method is called by lightning with both `trainer.fit()` and `trainer.test()`, so be
+        careful not to execute things like random split twice!
+        """
+        # load and split datasets only if not loaded already
+        if not self.data_train and not self.data_test:
+            trainset = ImageFolder(self.data_dir / "train", transform=self.transforms)
+            testset = ImageFolder(self.data_dir / "test", transform=self.transforms)
+            valset = ImageFolder(self.data_dir / "val", transform=self.transforms)
+
+            self.data_train, self.data_test, self.data_val = trainset, testset, valset
+
+    def train_dataloader(self):
+        return DataLoader(
+            dataset=self.data_train,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=True,
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            dataset=self.data_val,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=False,
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            dataset=self.data_test,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=False,
+        )
+
+    def teardown(self, stage: Optional[str] = None):
+        """Clean up after fit or test."""
+        pass
+
+    def state_dict(self):
+        """Extra things to save to checkpoint."""
+        return {}
+
+    def load_state_dict(self, state_dict: Dict[str, Any]):
+        """Things to do when loading checkpoint."""
+        pass
+    
 
 ml_root = Path("/opt/ml")
 
@@ -46,6 +202,36 @@ dataset_dir = ml_root / "processing"
 
 def eval_model(trainer, model, datamodule):
     test_res = trainer.test(model, datamodule)[0]
+    idx_to_class = {k: v for v,k in datamodule.data_train.class_to_idx.items()}
+    model.idx_to_class = idx_to_class
+
+    # calculating per class accuracy
+    nb_classes = datamodule.num_classes
+
+    confusion_matrix = torch.zeros(nb_classes, nb_classes)
+    # acc_all = 0
+    with torch.no_grad():
+        for i, (images, targets) in enumerate(datamodule.test_dataloader()):
+            # images = images.to(device)
+            # targets = targets.to(device)
+            outputs = model(images)
+            # acc_all += (outputs == targets).sum()
+            _, preds = torch.max(outputs, 1)
+            for t, p in zip(targets.view(-1), preds.view(-1)):
+                confusion_matrix[t.long(), p.long()] += 1
+    """
+    Simple Logic may be useful:
+    acc = [0 for c in list_of_classes]
+    for c in list_of_classes:
+        acc[c] = ((preds == labels) * (labels == c)).float() / (max(labels == c).sum(), 1))
+    """
+    
+    # acc_all = acc_all / len(datamodule.test_dataloader())
+
+    accuracy_per_class = {
+        idx_to_class[idx]: val.item() * 100 for idx, val in enumerate(confusion_matrix.diag() / confusion_matrix.sum(1))
+    }
+    print(accuracy_per_class)
     
     report_dict = {
         "multiclass_classification_metrics": {
@@ -53,6 +239,7 @@ def eval_model(trainer, model, datamodule):
                 "value": test_res["test/acc"],
                 "standard_deviation": "0",
             },
+            "confusion_matrix" : accuracy_per_class,
         },
     }
     
@@ -73,7 +260,7 @@ if __name__ == '__main__':
     with tarfile.open(model_path) as tar:
         tar.extractall(path=".")
     
-    datamodule = FlowerDataModule(
+    datamodule = IntelImgClfDataModule(
         data_dir=dataset_dir.absolute(),
         num_workers=os.cpu_count()
     )
