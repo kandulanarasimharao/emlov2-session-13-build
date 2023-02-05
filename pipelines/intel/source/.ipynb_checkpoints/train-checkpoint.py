@@ -240,6 +240,7 @@ def train_and_evaluate(model, datamodule, sm_training_env, output_dir):
 
     with open(output_dir / "accuracy_per_class.json", "w") as outfile:
         json.dump(acc_per_class, outfile)
+    return trainer
 
 
 def save_scripted_model(model, output_dir):
