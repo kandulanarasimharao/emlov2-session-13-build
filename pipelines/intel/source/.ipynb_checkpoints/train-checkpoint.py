@@ -1,6 +1,23 @@
+import subprocess
+import sys
+
+def install(package):
+    subprocess.check_call([sys.executable, "-q", "-m", "pip", "install", package])
+
+install('dvc==2.8.3')
+install('s3fs==2021.11.0')
+install('dvc[s3]==2.8.3')
+install('git-remote-codecommit')
+install('sagemaker-experiments')
+install('gitpython')
+install('scikit-learn')
+install('pytorch-lightning')
+install('timm')
+install('tensorboard')
+install('tensorboardX')
+
 import json
 import os
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple

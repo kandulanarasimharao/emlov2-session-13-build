@@ -1,7 +1,21 @@
+import subprocess
+import sys
+
+def install(package):
+    subprocess.check_call([sys.executable, "-q", "-m", "pip", "install", package])
+
+install('dvc==2.8.3')
+install('s3fs==2021.11.0')
+install('dvc[s3]==2.8.3')
+install('git-remote-codecommit')
+install('sagemaker-experiments')
+install('gitpython')
+install('scikit-learn')
+install('pytorch-lightning')
+install('timm')
+
 import os
 import argparse
-import sys
-import subprocess
 import glob
 import shutil
 import dvc.api
