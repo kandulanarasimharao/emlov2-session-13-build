@@ -201,7 +201,7 @@ ml_root = Path("/opt/ml")
 git_path = ml_root / "sagemaker-intelimage"
 
 model_artifacts = ml_root / "processing" / "model"
-dataset_dir = ml_root / "sagemaker-intelimage" / "processing"
+dataset_dir = ml_root / "sagemaker-intelimage"
 
 def eval_model(trainer, model, datamodule):
     test_res = trainer.test(model, datamodule)[0]
