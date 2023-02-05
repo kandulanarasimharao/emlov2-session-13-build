@@ -195,10 +195,13 @@ class IntelImgClfDataModule(pl.LightningDataModule):
         pass
     
 
+
+
 ml_root = Path("/opt/ml")
+git_path = ml_root / "sagemaker-intelimage"
 
 model_artifacts = ml_root / "processing" / "model"
-dataset_dir = ml_root / "processing"
+dataset_dir = ml_root / "sagemaker-intelimage" / "processing"
 
 def eval_model(trainer, model, datamodule):
     test_res = trainer.test(model, datamodule)[0]
@@ -252,9 +255,29 @@ def eval_model(trainer, model, datamodule):
     
     with out_path.open("w") as f:
         f.write(json.dumps(report_dict))
-        
-        
-if __name__ == '__main__':
+
+dvc_repo_url = os.environ.get("DVC_REPO_URL")
+dvc_branch = os.environ.get("DVC_BRANCH")
+
+def clone_dvc_git_repo():
+    print(f":: Configure git to pull authenticated from CodeCommit")
+    print(f":: Cloning repo: {dvc_repo_url}, git branch: {dvc_branch}")
+    subprocess.check_call(
+        ["git", "clone", "--depth", "1", "--branch", dvc_branch, dvc_repo_url, git_path]
+    )
+
+
+def dvc_pull():
+    print(":: Running dvc pull command")
+    os.chdir(git_path)
+
+    print(f":: Pull from DVC")
+    subprocess.check_call(["dvc", "pull"])
+
+
+if __name__ == "__main__":
+    clone_dvc_git_repo()
+    dvc_pull()
     
     model_path = "/opt/ml/processing/model/model.tar.gz"
     with tarfile.open(model_path) as tar:

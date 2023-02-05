@@ -256,14 +256,12 @@ def clone_dvc_git_repo():
         ["git", "clone", "--depth", "1", "--branch", dvc_branch, dvc_repo_url, git_path]
     )
 
-
 def dvc_pull():
     print(":: Running dvc pull command")
     os.chdir(git_path)
 
     print(f":: Pull from DVC")
     subprocess.check_call(["dvc", "pull"])
-
 
 if __name__ == "__main__":
     clone_dvc_git_repo()

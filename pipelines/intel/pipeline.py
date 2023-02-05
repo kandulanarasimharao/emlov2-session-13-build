@@ -306,6 +306,12 @@ def get_pipeline(
         # instance_type='local',
         instance_count=1,
         base_job_name=f'{base_job_name}/eval-inetl-classifier-model',
+        environment={
+            "DVC_REPO_URL": dvc_repo_url,
+            "DVC_BRANCH": dvc_branch,
+            "GIT_USER": "Kandula Narasimharao",
+            "GIT_EMAIL": "kandulanarasimharao@gmail.com"
+        }
     )
 
     
