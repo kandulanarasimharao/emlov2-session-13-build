@@ -209,7 +209,7 @@ def train_and_evaluate(model, datamodule, sm_training_env, output_dir):
         save_dir=ml_root / "output" / "tensorboard" / sm_training_env["job_name"]
     )
     trainer = pl.Trainer(
-        max_epochs=5,
+        max_epochs=1,
         accelerator="auto",
         logger=[tb_logger],
         callbacks=[TQDMProgressBar(refresh_rate=10)],
