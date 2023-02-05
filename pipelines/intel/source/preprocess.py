@@ -135,5 +135,11 @@ if __name__=="__main__":
     # extract the input zip file and split into train and test
     generate_dataset()
     
+     print(":: copy data to train")
+    subprocess.check_call('cp -r /opt/ml/processing/sagemaker-intelimage/dataset/train/* /opt/ml/processing/dataset/train', shell=True)
+    subprocess.check_call('cp -r /opt/ml/processing/sagemaker-intelimage/dataset/test/* /opt/ml/processing/dataset/test', shell=True)
+    subprocess.check_call('cp -r /opt/ml/processing/sagemaker-intelimage/dataset/val/* /opt/ml/processing/dataset/val', shell=True)
+    
+    
     print(":: Sync Processed Data to Git & DVC")
     sync_data_with_dvc(repo)
