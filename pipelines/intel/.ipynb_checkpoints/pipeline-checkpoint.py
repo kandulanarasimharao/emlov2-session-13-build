@@ -278,7 +278,7 @@ def get_pipeline(
             s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
                 "test"
             ].S3Output.S3Uri,
-        )
+        ),
         'val': TrainingInput(
             s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
                 "val"
