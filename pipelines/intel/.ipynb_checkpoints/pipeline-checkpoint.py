@@ -263,6 +263,8 @@ def get_pipeline(
         max_wait=1800,
         max_run=1500,
         environment={
+            "DVC_REPO_URL": dvc_repo_url,
+            "DVC_BRANCH": dvc_branch,
             "GIT_USER": "Kandula Narasimharao",
             "GIT_EMAIL": "kandulanarasimharao@gmail.com"
         }
