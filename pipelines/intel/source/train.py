@@ -247,7 +247,9 @@ def save_scripted_model(model, output_dir):
 
     # save for use in production environment
     torch.jit.save(script, output_dir / "model.scripted.pt")
-
+    
+def save_last_ckpt(trainer, output_dir):
+    trainer.save_checkpoint(output_dir / "last.ckpt")
 
 def clone_dvc_git_repo():
     print(f":: Configure git to pull authenticated from CodeCommit")
@@ -282,7 +284,10 @@ if __name__ == "__main__":
     sm_training_env = get_training_env()
 
     print(":: Training ...")
-    train_and_evaluate(model, datamodule, sm_training_env, sm_model_dir)
+    trainer = train_and_evaluate(model, datamodule, sm_training_env, sm_model_dir)
+    
+    print(":: Saving Model Ckpt")
+    save_last_ckpt(trainer, sm_model_dir)
 
     print(":: Saving Scripted Model")
     save_scripted_model(model, sm_model_dir)
