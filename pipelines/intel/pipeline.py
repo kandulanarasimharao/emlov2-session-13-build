@@ -230,7 +230,7 @@ def get_pipeline(
                 source="/opt/ml/processing/dataset/test"
             ),
             ProcessingOutput(
-                output_name="test",
+                output_name="val",
                 source="/opt/ml/processing/dataset/val"
             ),
         ],
