@@ -260,8 +260,8 @@ def get_pipeline(
         instance_type="ml.m5.4xlarge",
         tensorboard_output_config=tensorboard_output_config,
         use_spot_instances=True,
-        max_wait=1800,
-        max_run=1500,
+        max_wait=10000,
+        max_run=5000,
         environment={
             "DVC_REPO_URL": dvc_repo_url,
             "DVC_BRANCH": dvc_branch,
